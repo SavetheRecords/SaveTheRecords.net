@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop | Rambone Records</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Compact grouping style for the search input and button */
+    .search-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .search-group .form-control {
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <header id="global-header"></header>
+
+  <main>
+    <div class="shop-toolbar">
+      <div>
+        <h2 class="section-title" style="margin: 0;">Our Inventory</h2>
+        <p style="color: var(--text-muted); margin-top: 0.2rem;" id="pagination-status">Loading stock data...</p>
+      </div>
+      <!-- Search Input and Action Button Group -->
+      <div class="search-group">
+        <input 
+          type="text" 
+          id="shop-search" 
+          class="form-control search-input" 
+          placeholder="Search entire inventory..."
+          disabled
+        />
+        <button id="search-btn" class="btn" style="padding: 0 1.5rem;" disabled>Search</button>
+      </div>
+    </div>
+
+    <div id="shop-grid" class="grid">
+      <div class="card skeleton" style="height: 350px;"></div>
+      <div class="card skeleton" style="height: 350px;"></div>
+      <div class="card skeleton" style="height: 350px;"></div>
+      <div class="card skeleton" style="height: 350px;"></div>
+    </div>
+
+    <div class="pagination" id="pagination-controls">
+      <button class="btn" id="prev-btn" style="padding: 0.5rem 1rem;" disabled>Previous</button>
+      <span id="page-indicator">Page 1</span>
+      <button class="btn" id="next-btn" style="padding: 0.5rem 1rem;" disabled>Next</button>
+    </div>
+  </main>
+
+  <footer id="global-footer"></footer>
+
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    let currentPage = 1;
+    const itemsPerPage = 12;
+    let currentSearchQuery = '';
+
+    const grid = document.getElementById('shop-grid');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const pageIndicator = document.getElementById('page-indicator');
+    const statusText = document.getElementById('pagination-status');
+    const searchInput = document.getElementById('shop-search');
+    const searchBtn = document.getElementById('search-btn');
+    const paginationControls = document.getElementById('pagination-controls');
+
+    async function loadShopPage(page, query = '') {
+      grid.innerHTML = Array(4).fill('<div class="card skeleton" style="height: 350px;"></div>').join('');
+      searchInput.disabled = true;
+      searchBtn.disabled = true;
+
+      const data = await fetchInventory(page, itemsPerPage, query);
+
+      if (data && data.listings) {
+        if (data.listings.length === 0) {
+          grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem 0;">No items found matching your search.</p>';
+          statusText.textContent = '0 items found.';
+          paginationControls.style.display = 'none';
+        } else {
+          grid.innerHTML = data.listings.map(item => createProductCardHtml(item)).join('');
+
+          const pag = data.pagination;
+          currentPage = pag.page;
+          pageIndicator.textContent = `Page ${pag.page} of ${pag.pages}`;
+          statusText.textContent = `Showing items ${((pag.page - 1) * pag.per_page) + 1} - ${Math.min(pag.page * pag.per_page, pag.items)} of ${pag.items} items.`;
+
+          prevBtn.disabled = !pag.urls.prev;
+          nextBtn.disabled = !pag.urls.next;
+          paginationControls.style.display = pag.pages > 1 ? 'flex' : 'none';
+        }
+        searchInput.disabled = false;
+        searchBtn.disabled = false;
+      } else {
+        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Could not load items. You may have exceeded your limit. Please wait a minute and try again.</p>';
+        statusText.textContent = 'Offline';
+        paginationControls.style.display = 'none';
+        searchInput.disabled = false;
+        searchBtn.disabled = false;
+      }
+    }
+
+    // Trigger Search execution
+    function executeSearch() {
+      currentSearchQuery = searchInput.value.trim();
+      currentPage = 1; // Reset to page 1 for search results
+      loadShopPage(currentPage, currentSearchQuery);
+    }
+
+    // Click trigger
+    searchBtn.addEventListener('click', executeSearch);
+
+    // Enter Key trigger
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        executeSearch();
+      }
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (currentPage > 1) {
+        loadShopPage(currentPage - 1, currentSearchQuery);
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      loadShopPage(currentPage + 1, currentSearchQuery);
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadShopPage(currentPage);
+    });
+  </script>
+</body>
+</html>

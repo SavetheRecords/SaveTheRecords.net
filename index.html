@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home | Rambone Records</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Dynamic Header loaded from header.html -->
+  <header id="global-header"></header>
+
+  <main>
+    <!-- Brand Hero Section -->
+    <section class="hero">
+      <h1>Rambone Records</h1>
+      <p>Your direct interface with our curation of physical sounds. Hand-selected vinyl records cataloged and exported directly from our active warehouse inventory.</p>
+      <a href="shop.html" class="btn">Explore Inventory</a>
+    </section>
+
+    <!-- Dynamic New Arrivals Section -->
+    <section>
+      <h2 class="section-title">New Arrivals</h2>
+      <div id="new-arrivals-grid" class="grid">
+        <!-- Render loading skeleton cards first -->
+        <div class="card skeleton" style="height: 350px;"></div>
+        <div class="card skeleton" style="height: 350px;"></div>
+        <div class="card skeleton" style="height: 350px;"></div>
+        <div class="card skeleton" style="height: 350px;"></div>
+      </div>
+    </section>
+
+    <!-- Dynamic Reviews Section -->
+    <section>
+      <h2 class="section-title">Customer Reviews</h2>
+      <div id="reviews-container" class="reviews-grid">
+         <!-- Reviews loaded dynamically from data/reviews.json -->
+         <p style="color: var(--text-muted);">Loading feedback...</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Dynamic Footer loaded from footer.html -->
+  <footer id="global-footer"></footer>
+
+  <script src="js/main.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Fetch and load 4 newest listings for the homepage
+      const arrivalsGrid = document.getElementById('new-arrivals-grid');
+      const data = await fetchInventory(1, 4);
+      
+      if (data && data.listings && data.listings.length > 0) {
+        arrivalsGrid.innerHTML = data.listings.map(item => createProductCardHtml(item)).join('');
+      } else {
+        arrivalsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">Unable to load items at this time. Please browse our active listings directly in the shop.</p>';
+      }
+
+      // 2. Load Customer Reviews from data/reviews.json
+      const reviewsContainer = document.getElementById('reviews-container');
+      const reviews = await fetchLocalReviews();
+      
+      if (reviews && reviews.length > 0) {
+        reviewsContainer.innerHTML = reviews.map(rev => `
+          <div class="review-card">
+            <div class="review-stars">${'★'.repeat(rev.rating)}${'☆'.repeat(5 - rev.rating)}</div>
+            <p style="margin-bottom: 1rem; font-style: italic;">"${rev.comment}"</p>
+            <p class="review-author">— ${rev.name}</p>
+            <p class="review-date" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">${rev.date || ''}</p>
+          </div>
+        `).join('');
+      } else {
+        reviewsContainer.innerHTML = '<p style="color: var(--text-muted);">No customer reviews available at this moment.</p>';
+      }
+    });
+  </script>
+</body>
+</html>
