@@ -26,7 +26,7 @@
         <h2 class="section-title" style="margin: 0;">Our Catalog</h2>
         <p style="color: var(--text-muted); margin-top: 0.2rem;" id="pagination-status">Loading stock data...</p>
       </div>
-      <!-- Search Input and Action Button Group -->
+      <!-- Search Input and Action Group -->
       <div class="search-group">
         <input 
           type="text" 
@@ -74,11 +74,7 @@
     const searchBtn = document.getElementById('search-btn');
     const paginationControls = document.getElementById('pagination-controls');
 
-    /**
-     * Loads a specific page from the Discogs API securely via the Netlify Proxy
-     */
     async function loadShopPage(page, query = '') {
-      // Draw skeleton loaders on screen while fetching
       grid.innerHTML = Array(4).fill('<div class="card skeleton" style="height: 350px;"></div>').join('');
       searchInput.disabled = true;
       searchBtn.disabled = true;
@@ -91,7 +87,6 @@
           statusText.textContent = '0 items found.';
           paginationControls.style.display = 'none';
         } else {
-          // Render listings securely
           grid.innerHTML = data.listings.map(item => createProductCardHtml(item)).join('');
 
           const pag = data.pagination;
@@ -106,7 +101,9 @@
         searchInput.disabled = false;
         searchBtn.disabled = false;
       } else {
-        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Could not load items. You may have exceeded your limit. Please wait a minute and try again.</p>';
+        // Expose the precise error string on the screen
+        const errorMessage = (data && data.error) ? data.error : 'Network connection or proxy timeout.';
+        grid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #f82639; font-weight: bold; padding: 2rem;">Error: ${errorMessage}</p>`;
         statusText.textContent = 'Offline';
         paginationControls.style.display = 'none';
         searchInput.disabled = false;
@@ -114,17 +111,14 @@
       }
     }
 
-    // Trigger Search execution securely through the proxy
     function executeSearch() {
       currentSearchQuery = searchInput.value.trim();
-      currentPage = 1; // Reset to page 1 for new search results
+      currentPage = 1;
       loadShopPage(currentPage, currentSearchQuery);
     }
 
-    // Click trigger
     searchBtn.addEventListener('click', executeSearch);
 
-    // Enter Key trigger
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         executeSearch();
@@ -141,7 +135,6 @@
       loadShopPage(currentPage + 1, currentSearchQuery);
     });
 
-    // Initial load
     document.addEventListener('DOMContentLoaded', () => {
       loadShopPage(currentPage);
     });
