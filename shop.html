@@ -6,7 +6,6 @@
   <title>Shop | Rambone Records</title>
   <link rel="stylesheet" href="css/style.css">
   <style>
-    /* Styling to group the search bar and button cleanly */
     .search-group {
       display: flex;
       gap: 0.5rem;
@@ -24,7 +23,7 @@
   <main>
     <div class="shop-toolbar">
       <div>
-        <h2 class="section-title" style="margin: 0;">Our Inventory</h2>
+        <h2 class="section-title" style="margin: 0;">Our Catalog</h2>
         <p style="color: var(--text-muted); margin-top: 0.2rem;" id="pagination-status">Loading stock data...</p>
       </div>
       <!-- Search Input and Action Button Group -->
@@ -33,7 +32,7 @@
           type="text" 
           id="shop-search" 
           class="form-control search-input" 
-          placeholder="Search entire inventory..."
+          placeholder="Search artist, title, label..."
           disabled
         />
         <button id="search-btn" class="btn" style="padding: 0 1.5rem;" disabled>Search</button>
@@ -42,7 +41,6 @@
 
     <!-- Active Grid -->
     <div id="shop-grid" class="grid">
-      <!-- Loading placeholders -->
       <div class="card skeleton" style="height: 350px;"></div>
       <div class="card skeleton" style="height: 350px;"></div>
       <div class="card skeleton" style="height: 350px;"></div>
@@ -76,6 +74,9 @@
     const searchBtn = document.getElementById('search-btn');
     const paginationControls = document.getElementById('pagination-controls');
 
+    /**
+     * Loads a specific page from the Discogs API securely via the Netlify Proxy
+     */
     async function loadShopPage(page, query = '') {
       // Draw skeleton loaders on screen while fetching
       grid.innerHTML = Array(4).fill('<div class="card skeleton" style="height: 350px;"></div>').join('');
@@ -90,7 +91,7 @@
           statusText.textContent = '0 items found.';
           paginationControls.style.display = 'none';
         } else {
-          // Render listings safely
+          // Render listings securely
           grid.innerHTML = data.listings.map(item => createProductCardHtml(item)).join('');
 
           const pag = data.pagination;
