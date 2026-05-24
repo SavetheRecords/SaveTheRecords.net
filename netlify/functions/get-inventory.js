@@ -6,6 +6,7 @@ exports.handler = function (event, context) {
   const token = process.env.DISCOGS_TOKEN;
 
   if (!token) {
+    console.error("CRITICAL ERROR: DISCOGS_TOKEN is not configured in your Netlify settings.");
     return Promise.resolve({
       statusCode: 500,
       body: JSON.stringify({ error: 'DISCOGS_TOKEN is not configured in Netlify settings.' })
@@ -22,12 +23,16 @@ exports.handler = function (event, context) {
     url = `https://api.discogs.com/users/rambone/inventory?page=${page}&per_page=${per_page}&status=for%20sale&sort=listed&sort_order=desc&token=${token}`;
   }
 
-  return new Promise((resolve) => {
-    console.log(`Routing inventory request to: ${url}`);
+  // Log the request for diagnostics (Hiding the token for safety)
+  const safeLogUrl = url.replace(`token=${token}`, 'token=HIDDEN_SECRET');
+  console.log(`[get-inventory] Routing request to Discogs: ${safeLogUrl}`);
 
+  return new Promise((resolve) => {
     https.get(url, {
       headers: { 'User-Agent': 'RamboneRecordsWeb/1.0' }
     }, (res) => {
+      console.log(`[get-inventory] Discogs responded with status: ${res.statusCode}`);
+      
       let data = '';
       
       res.on('data', (chunk) => {
@@ -35,50 +40,55 @@ exports.handler = function (event, context) {
       });
 
       res.on('end', () => {
-        let parsedData;
+        let parsedData = null;
+        
         try {
-          parsedData = JSON.parse(data);
-          
-          // If this is a search result, normalize the "results" schema into the "listings" schema
-          if (parsedData.results && !parsedData.listings) {
-            parsedData.listings = parsedData.results.map(item => {
-              const normalized = { ...item };
-              
-              if (!normalized.release) {
-                normalized.release = {};
-              }
-
-              // Extract artist and title from the combined string "Artist - Title"
-              if (!normalized.release.artist || !normalized.release.title) {
-                const fullTitle = item.title || '';
-                if (fullTitle.includes(' - ')) {
-                  const parts = fullTitle.split(' - ');
-                  normalized.release.artist = normalized.release.artist || parts[0].trim();
-                  normalized.release.title = normalized.release.title || parts.slice(1).join(' - ').trim();
-                } else {
-                  normalized.release.title = normalized.release.title || fullTitle || 'Untitled Release';
-                  normalized.release.artist = normalized.release.artist || 'Unknown Artist';
-                }
-              }
-
-              // Map format if placed differently
-              if (item.format && !normalized.release.format) {
-                normalized.release.format = item.format;
-              }
-
-              // Map thumbnail image
-              if (item.thumbnail && !normalized.release.thumbnail) {
-                normalized.release.thumbnail = item.thumbnail;
-              }
-
-              return normalized;
-            });
-            
-            // Clean up the original results field
-            delete parsedData.results;
+          if (data && data.trim().startsWith('{')) {
+            parsedData = JSON.parse(data);
           }
         } catch (e) {
-          console.error('Failed to parse Discogs response:', e);
+          console.error('[get-inventory] Failed to parse JSON response from Discogs:', e.message);
+        }
+
+        // Safety check: Map search "results" to "listings" safely if they exist
+        if (parsedData && parsedData.results && Array.isArray(parsedData.results)) {
+          console.log(`[get-inventory] Processing ${parsedData.results.length} search results into inventory schema.`);
+          
+          parsedData.listings = parsedData.results.map(item => {
+            if (!item || typeof item !== 'object') return {};
+            
+            const normalized = { ...item };
+            if (!normalized.release) {
+              normalized.release = {};
+            }
+
+            // Extract artist and album name from the combined string "Artist - Title"
+            if (!normalized.release.artist || !normalized.release.title) {
+              const fullTitle = item.title || '';
+              if (fullTitle.includes(' - ')) {
+                const parts = fullTitle.split(' - ');
+                normalized.release.artist = normalized.release.artist || parts[0].trim();
+                normalized.release.title = normalized.release.title || parts.slice(1).join(' - ').trim();
+              } else {
+                normalized.release.title = normalized.release.title || fullTitle || 'Untitled Release';
+                normalized.release.artist = normalized.release.artist || 'Unknown Artist';
+              }
+            }
+
+            // Standardize format metadata
+            if (item.format && !normalized.release.format) {
+              normalized.release.format = item.format;
+            }
+
+            // Standardize thumbnail metadata
+            if (item.thumbnail && !normalized.release.thumbnail) {
+              normalized.release.thumbnail = item.thumbnail;
+            }
+
+            return normalized;
+          });
+          
+          delete parsedData.results;
         }
 
         resolve({
@@ -91,7 +101,7 @@ exports.handler = function (event, context) {
         });
       });
     }).on('error', (error) => {
-      console.error('Error fetching inventory:', error);
+      console.error('[get-inventory] Network error requesting data from Discogs:', error.message);
       resolve({
         statusCode: 500,
         body: JSON.stringify({ error: error.message })
