@@ -13,14 +13,15 @@ exports.handler = function (event, context) {
     });
   }
 
-  // We omit the status parameter entirely because Discogs automatically defaults to "for sale".
-  // This completely avoids any space character or url-encoding issues in Node's strict HTTPS module!
-  let url = `https://api.discogs.com/users/rambone/inventory?page=${page}&per_page=${per_page}&sort=listed&sort_order=desc&token=${token}`;
+  // We use the standard inventory endpoint which natively supports searching via the 'q' parameter.
+  // We encode the space as "for%20sale" so the native Node.js HTTPS module doesn't crash on unescaped characters.
+  let url = `https://api.discogs.com/users/rambone/inventory?page=${page}&per_page=${per_page}&status=for%20sale&sort=listed&sort_order=desc&token=${token}`;
   
   if (q) {
     url += `&q=${encodeURIComponent(q)}`;
   }
 
+  // Log the request for diagnostics (Hiding the token for safety)
   const safeLogUrl = url.replace(`token=${token}`, 'token=HIDDEN_SECRET');
   console.log(`[get-inventory] Routing request to Discogs: ${safeLogUrl}`);
 
