@@ -1,8 +1,10 @@
+// js/api.js
+
 /**
- * Fetch marketplace inventory via local Netlify proxy
+ * Fetch marketplace inventory via your local Netlify proxy
  */
 async function fetchInventory(page = 1, perPage = 25, query = '') {
-  // Call your local proxy instead of Discogs directly
+  // Directly call your secure backend get-inventory function
   let url = `/.netlify/functions/get-inventory?page=${page}&per_page=${perPage}`;
   
   if (query) {
@@ -11,7 +13,7 @@ async function fetchInventory(page = 1, perPage = 25, query = '') {
 
   try {
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Proxy error');
+    if (!response.ok) throw new Error('Proxy error fetching inventory');
     return await response.json();
   } catch (error) {
     console.error('Failed to fetch from proxy:', error);
@@ -20,7 +22,7 @@ async function fetchInventory(page = 1, perPage = 25, query = '') {
 }
 
 /**
- * Fetch reviews from local JSON file
+ * Fetch reviews from your local JSON file
  */
 async function fetchLocalReviews() {
   try {
@@ -35,7 +37,7 @@ async function fetchLocalReviews() {
 
 /**
  * Helper template generator for inventory cards
- * Loads the exact Discogs cover art securely via your proxy
+ * Securely streams the exact, pressing-specific cover art from Discogs
  */
 function createProductCardHtml(listing) {
   const { release, price, id, uri } = listing;
@@ -48,9 +50,10 @@ function createProductCardHtml(listing) {
 
   const fallbackImage = 'images/defaultcoverart.jpg';
   
-  // Set up the proxy image URL using your get-image function
+  // Set up the proxy image URL using your backend get-image function
   let coverImage = fallbackImage;
   if (release.thumbnail) {
+    // This routes the image request safely through netlify/functions/get-image.js
     coverImage = `/.netlify/functions/get-image?url=${encodeURIComponent(release.thumbnail)}`;
   }
 
