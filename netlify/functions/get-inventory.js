@@ -35,13 +35,59 @@ exports.handler = function (event, context) {
       });
 
       res.on('end', () => {
+        let parsedData;
+        try {
+          parsedData = JSON.parse(data);
+          
+          // If this is a search result, normalize the "results" schema into the "listings" schema
+          if (parsedData.results && !parsedData.listings) {
+            parsedData.listings = parsedData.results.map(item => {
+              const normalized = { ...item };
+              
+              if (!normalized.release) {
+                normalized.release = {};
+              }
+
+              // Extract artist and title from the combined string "Artist - Title"
+              if (!normalized.release.artist || !normalized.release.title) {
+                const fullTitle = item.title || '';
+                if (fullTitle.includes(' - ')) {
+                  const parts = fullTitle.split(' - ');
+                  normalized.release.artist = normalized.release.artist || parts[0].trim();
+                  normalized.release.title = normalized.release.title || parts.slice(1).join(' - ').trim();
+                } else {
+                  normalized.release.title = normalized.release.title || fullTitle || 'Untitled Release';
+                  normalized.release.artist = normalized.release.artist || 'Unknown Artist';
+                }
+              }
+
+              // Map format if placed differently
+              if (item.format && !normalized.release.format) {
+                normalized.release.format = item.format;
+              }
+
+              // Map thumbnail image
+              if (item.thumbnail && !normalized.release.thumbnail) {
+                normalized.release.thumbnail = item.thumbnail;
+              }
+
+              return normalized;
+            });
+            
+            // Clean up the original results field
+            delete parsedData.results;
+          }
+        } catch (e) {
+          console.error('Failed to parse Discogs response:', e);
+        }
+
         resolve({
           statusCode: res.statusCode,
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*'
           },
-          body: data
+          body: parsedData ? JSON.stringify(parsedData) : data
         });
       });
     }).on('error', (error) => {
