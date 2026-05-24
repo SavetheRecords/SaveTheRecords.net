@@ -12,12 +12,19 @@ exports.handler = function (event, context) {
     });
   }
 
-  let url = `https://api.discogs.com/users/rambone/inventory?page=${page}&per_page=${per_page}&status=for sale&sort=listed&sort_order=desc&token=${token}`;
+  let url = '';
+
   if (q) {
-    url += `&q=${encodeURIComponent(q)}`;
+    // 1. If searching, use Discogs' official Marketplace Search filtered to your store
+    url = `https://api.discogs.com/marketplace/search?seller=rambone&q=${encodeURIComponent(q)}&page=${page}&per_page=${per_page}&token=${token}`;
+  } else {
+    // 2. If browsing, use the standard inventory endpoint sorted by recently listed
+    url = `https://api.discogs.com/users/rambone/inventory?page=${page}&per_page=${per_page}&status=for%20sale&sort=listed&sort_order=desc&token=${token}`;
   }
 
   return new Promise((resolve) => {
+    console.log(`Routing inventory request to: ${url}`);
+
     https.get(url, {
       headers: { 'User-Agent': 'RamboneRecordsWeb/1.0' }
     }, (res) => {
@@ -38,6 +45,7 @@ exports.handler = function (event, context) {
         });
       });
     }).on('error', (error) => {
+      console.error('Error fetching inventory:', error);
       resolve({
         statusCode: 500,
         body: JSON.stringify({ error: error.message })
