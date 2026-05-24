@@ -2,9 +2,9 @@
 
 /**
  * Fetch marketplace inventory via your local Netlify proxy
+ * Now forwards detailed error messages to the UI.
  */
 async function fetchInventory(page = 1, perPage = 25, query = '') {
-  // Directly call your secure backend get-inventory function
   let url = `/.netlify/functions/get-inventory?page=${page}&per_page=${perPage}`;
   
   if (query) {
@@ -13,11 +13,14 @@ async function fetchInventory(page = 1, perPage = 25, query = '') {
 
   try {
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Proxy error fetching inventory');
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Server status ${response.status}: ${errText}`);
+    }
     return await response.json();
   } catch (error) {
     console.error('Failed to fetch from proxy:', error);
-    return null;
+    return { error: error.message }; // Pass the error message back to the UI
   }
 }
 
@@ -50,10 +53,8 @@ function createProductCardHtml(listing) {
 
   const fallbackImage = 'images/defaultcoverart.jpg';
   
-  // Set up the proxy image URL using your backend get-image function
   let coverImage = fallbackImage;
   if (release.thumbnail) {
-    // This routes the image request safely through netlify/functions/get-image.js
     coverImage = `/.netlify/functions/get-image?url=${encodeURIComponent(release.thumbnail)}`;
   }
 
